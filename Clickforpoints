@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ClickForPoints - Jeu Clicker Complet</title>
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&currency=EUR"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#89f7fe 0%,#66a6ff 100%);
+    color: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 20px;
+    transition: background 0.5s ease;
+  }
+  #score, #upgrade-info {
+    font-size: 1.5em;
+    margin: 10px 0;
+    user-select: none;
+  }
+  #click-value {
+    display: none;
+  }
+  .buttons-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 15px 0 30px 0;
+  }
+  #click-button {
+    font-size: 1.8em;
+    color: #222;
+    background-color: #bbb;
+    width: 150px;
+    height: 150px;
+    border-radius: 15px;
+    border: 2px solid #444;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-weight: bold;
+    margin: 10px auto 30px auto;
+    transition: background-color 0.3s ease;
+  }
+  .press-animate {
+    animation: pressEffect 150ms ease;
+  }
+  @keyframes pressEffect {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .chest-button {
+    width: 90px;
+    height: 90px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 1.8em;
+    border: 2px solid #666;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.3s ease;
+    color: #333;
+    background: #999;
+    text-align: center;
+    margin: 5px;
+  }
+  .chest-gray {
+    background: linear-gradient(145deg, #bbb, #888);
+    border-color: #666;
+    color: #444;
+  }
+  .chest-green {
+    background: #27ae60;
+    color: white;
+    border-color: #1e8449;
+    font-size: 3em;
+  }
+  .chest-blue {
+    background: #2980b9;
+    color: white;
+    border-color: #21618c;
+  }
+  .chest-purple {
+    background: #8e44ad;
+    color: white;
+    border-color: #6c3483;
+  }
+  .chest-gold {
+    background: #f1c40f;
+    color: black;
+    border-color: #b7950b;
+  }
+  #upgrade-button {
+    font-size: 1.8em;
+    padding: 15px 40px;
+    border-radius: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin: 10px 0 30px 0;
+  }
+  #status {
+    font-weight: bold;
+    margin-bottom: 20px;
+    min-height: 24px;
+  }
+  #paypal-button-container {
+    margin-top: 15px;
+    width: 320px;
+  }
+  #leaderboard {
+    width: 300px;
+    background: white;
+    color: black;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    margin-top: 20px;
+  }
+  #leaderboard h2 {
+    margin-top: 0;
+    text-align: center;
+  }
+  #leaderboard ul {
+    list-style: none;
+    padding-left: 10px;
+  }
+  #leaderboard li {
+    padding: 6px 0;
+    border-bottom: 1px solid #ddd;
+    font-weight: bold;
+  }
+  #reset-leaderboard {
+    margin-top: 10px;
+    width: 100%;
+    background-color: #e74c3c;
+    border: none;
+    color: white;
+    padding: 10px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+  }
+  #reset-leaderboard:hover {
+    background-color: #c0392b;
+  }
+  /* Tutoriel */
+  #tutorial-toggle {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.6em;
+    color: #444;
+    user-select: none;
+    margin-bottom: 15px;
+    text-align:center;
+  }
+  #tutorial-toggle:hover {
+    color: #000;
+  }
+  #tutorial {
+    display: none;
+    max-width: 600px;
+    background: white;
+    color: #222;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    margin-bottom: 30px;
+    font-size: 1em;
+    line-height: 1.4em;
+  }
+</style>
+</head>
+<body>
+
+<div id="score">Points: 0</div>
+<div id="click-value">Valeur du clic: 1</div>
+<div id="upgrade-info">Amélioration: coût 100 points (niveau 1, multiplicateur x5)</div>
+<button id="click-button" title="Clique pour gagner">+1 pts</button>
+<button id="upgrade-button">Acheter amélioration</button>
+
+<div id="status"></div>
+
+<div class="buttons-container" id="chests-container"></div>
+<div class="buttons-container" id="shop-container"></div>
+
+<div id="paypal-button-container"></div>
+
+<div id="tutorial-toggle" title="Afficher / cacher le tutoriel">❓</div>
+
+<div id="tutorial">
+  <h3>Tutoriel du jeu</h3>
+  <p>Bienvenue dans le jeu ClickForPoints ! Voici les points clés : </p>
+  <ul>
+    <li>Clique sur le coffre gris toutes les 8 heures pour obtenir un bouton coloré.</li>
+    <li>Le bouton obtenu te permet de gagner des points à chaque clic.</li>
+    <li>Achete des coffres spéciaux en boutique pour des bonus comme des émojis, sons, ou multiplicateurs.</li>
+    <li>Tu peux acheter un générateur automatique via PayPal (5 €) qui ajoute 5 points par minute.</li>
+    <li>Le générateur peut être amélioré gratuitement tous les 3 jours pour augmenter sa production.</li>
+    <li>Achète un auto-clicker via PayPal (3 €) : en maintenant appuyé sur le bouton, il clique 10 fois par seconde pendant 1 semaine.</li>
+    <li>Utilise les améliorations pour multiplier tes points par clic.</li>
+    <li>Consulte le classement local pour voir tes meilleurs scores. Tu peux le réinitialiser à tout moment.</li>
+    <li>Utilise les codes promo disponibles pour obtenir des bonus uniques.</li>
+  </ul>
+</div>
+
+<div id="leaderboard">
+  <h2>Classement local</h2>
+  <ul id="leaderboard-list"></ul>
+  <button id="reset-leaderboard">Réinitialiser classement</button>
+</div>
+
+<div style="margin: 20px auto; max-width: 320px; text-align: center;">
+  <input type="text" id="promo-code-input" placeholder="Entrez code promo" style="width: 60%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;" />
+  <button id="promo-apply-btn" style="padding: 9px 15px; border-radius: 6px; border: none; background-color: #4CAF50; color: white; cursor: pointer; margin-left: 5px;">Appliquer</button>
+  <div id="promo-message" style="margin-top: 8px; color: green; font-weight: bold;"></div>
+</div>
+
+<script>
+  let points = 0;
+  let baseClickValue = 1;
+  let upgradeLevel = 0;
+  let upgradeCost = 100;
+  let multiplier = 1;
+  let currentReward = null;
+  let lastGrayReward = null;
+
+  let generatorActive = false;
+  let generatorRate = 5;
+  let lastUpgradeTime = localStorage.getItem('lastGeneratorUpgrade') ? new Date(localStorage.getItem('lastGeneratorUpgrade')).getTime() : 0;
+  const upgradeCooldownMs = 3 * 24 * 60 * 60 * 1000;
+
+  let autoclickerActive = false;
+  let autoclickerEndTime = localStorage.getItem('autoclickerEndTime') ? new Date(localStorage.getItem('autoclickerEndTime')).getTime() : 0;
+  let autoclickerInterval = null;
+
+  const multiplierByLevel = [5, 4, 3, 2, 1.2];
+  const commonColors = ['red', 'yellow', 'blue'];
+  const emojis = ['😊', '😢', '😂'];
+
+  const CHEST_COOLDOWN_HOURS = 8;
+  const lastGrayChestOpen = localStorage.getItem('lastGrayChestOpen');
+  const lastChestTime = lastGrayChestOpen ? new Date(lastGrayChestOpen).getTime() : 0;
+
+  const chestsContainer = document.getElementById('chests-container');
+  const shopContainer = document.getElementById('shop-container');
+  const scoreEl = document.getElementById('score');
+  const clickValueEl = document.getElementById('click-value');
+  const upgradeInfoEl = document.getElementById('upgrade-info');
+  const upgradeButton = document.getElementById('upgrade-button');
+  const clickButton = document.getElementById('click-button');
+  const statusEl = document.getElementById('status');
+  const paypalButtonContainer = document.getElementById('paypal-button-container');
+  const leaderboardList = document.getElementById('leaderboard-list');
+  const resetLeaderboardBtn = document.getElementById('reset-leaderboard');
+  const tutorialToggle = document.getElementById('tutorial-toggle');
+  const tutorial = document.getElementById('tutorial');
+
+  // Code promo definitions
+  const validPromoCodes = {
+    'FIVESTARSFORTHEGAME': { type: 'points', amount: 5000000 },
+    '01KAIS': { type: 'autoclicker', durationDays: 30 },
+    'THEBESTGAMEOFTHEWORLD': { type: 'combo' }
+  };
+  let promoUsedCodes = JSON.parse(localStorage.getItem('promoUsedCodes')) || {};
+
+  const baseChestGoldCost = 1000000;
+  let chestGoldCost = baseChestGoldCost;
+
+  // Sound effects
+  const soundEffects = {
+    gun: 'https://actions.google.com/sounds/v1/weapons/shotgun_blast.ogg',
+    cash: 'https://actions.google.com/sounds/v1/cash_register/cash_register.ogg',
+    coin: 'https://actions.google.com/sounds/v1/coins/coin_drop.ogg'
+  };
+
+  // Tutoriel toggle
+  tutorialToggle.onclick = () => {
+    tutorial.style.display = (tutorial.style.display === 'block') ? 'none' : 'block';
+  };
+
+  function calculateUpgradeCost(level) {
+    if(level === 0) return 100;
+    return Math.floor(100 * Math.pow(1.5 + level/10, level));
+  }
+
+  function canOpenGrayChest(){
+    return Date.now() - lastChestTime > CHEST_COOLDOWN_HOURS * 3600000;
+  }
+
+  function updateUI() {
+    const cost = calculateUpgradeCost(upgradeLevel);
+    scoreEl.textContent = 'Points: ' + Math.floor(points);
+    upgradeCost = cost;
+    upgradeInfoEl.textContent = `Amélioration: coût ${cost} points (niveau ${upgradeLevel + 1}, multiplicateur x${getUpgradeMultiplier().toFixed(2)})`;
+    updateClickButton();
+    updateChestGoldButton();
+  }
+
+  function getUpgradeMultiplier(){
+    if(upgradeLevel < multiplierByLevel.length){
+      return multiplierByLevel[upgradeLevel];
+    }
+    return 1.2;
+  }
+
+  function getClickValue() {
+    return baseClickValue * multiplier * getUpgradeMultiplier();
+  }
+
+  function updateClickButton() {
+    clickButton.textContent = `+${getClickValue().toFixed(0)} pts`;
+  }
+
+  function animateButtonPress(){
+    clickButton.classList.remove('press-animate');
+    void clickButton.offsetWidth;
+    clickButton.classList.add('press-animate');
+  }
+
+  function handleButtonClick() {
+    points += getClickValue();
+    updateUI();
+    animateButtonPress();
+    checkPlayGoldSound();
+  }
+
+  // Play coin sound if golden button active
+  function checkPlayGoldSound(){
+    if(currentReward==='color' && clickButton.style.backgroundColor){
+      const bg=clickButton.style.backgroundColor.toLowerCase();
+      // Simple check for gold hex color (f1c40f)
+      if(bg.includes('rgb(241, 196, 15)') || bg.includes('241, 196, 15') || bg==='rgb(241,196,15)'){
+        const audio=new Audio(soundEffects.coin);
+        audio.volume=0.4;
+        audio.play();
+      }
+    }
+  }
+
+  function resetRewards() {
+    multiplier = 1;
+    currentReward = null;
+    clickButton.style.backgroundColor = '#bbb';
+    clickButton.style.background = '';
+    clickButton.onclick = handleButtonClick;
+    statusEl.textContent = '';
+  }
+
+  function pickNewGrayReward() {
+    let options = commonColors.filter(color => color !== lastGrayReward);
+    const choice = options[Math.floor(Math.random() * options.length)];
+    lastGrayReward = choice;
+    localStorage.setItem('lastGrayReward', lastGrayReward);
+    return choice;
+  }
+
+  function createGrayChest() {
+    const chest = document.createElement('button');
+    chest.classList.add('chest-button', 'chest-gray');
+    chest.textContent = 'Commun';
+    chest.title = 'Coffre gris (commun) - ouvre toutes les 8h';
+    chest.disabled = !canOpenGrayChest();
+    if(chest.disabled){
+      chest.style.opacity = '0.6';
+      chest.title += ' (En cooldown)';
+    }
+    chest.onclick = () => {
+      if(!canOpenGrayChest()){
+        alert('Coffre en cooldown, veuillez patienter.');
+        return;
+      }
+      openGrayChest(chest);
+    };
+    return chest;
+  }
+
+  function openGrayChest(chest) {
+    resetRewards();
+    multiplier = 1;
+    currentReward = 'color';
+    const color = pickNewGrayReward();
+
+    chest.className = 'chest-button';
+    chest.textContent = '';
+    chest.style.backgroundColor = color;
+    chest.title = 'Bouton commun ' + color;
+    chest.disabled = false;
+
+    clickButton.style.backgroundColor = color;
+    clickButton.onclick = handleButtonClick;
+
+    localStorage.setItem('lastGrayChestOpen', new Date().toISOString());
+    updateUI();
+    statusEl.textContent= `Coffre gris ouvert : bouton ${color}`;
+    chest.disabled = true;
+    chest.style.opacity = 0.6;
+  }
+
+  function createShopButton(colorClass, cost, labelText, onPurchase){
+    const btn=document.createElement('button');
+    btn.classList.add('chest-button', colorClass);
+    btn.textContent=labelText+' ('+cost+' pts)';
+    btn.title=`Coût: ${cost} points`;
+    btn.onclick=()=> {
+      if(points < cost){
+        alert(`Pas assez de points pour acheter ${labelText}`);
+        return;
+      }
+      if(currentReward && (currentReward === 'color' || currentReward === 'emoji' || currentReward === 'multiplier')){
+        alert('Vous avez une récompense incompatible active, réinitialisez-la avant.');
+        return;
+      }
+      points -= cost;
+      onPurchase();
+      updateUI();
+    };
+    return btn;
+  }
+
+  // Générateur auto
+  function startGenerator(){
+    if(generatorActive)return;
+    generatorActive=true;
+    localStorage.setItem('generatorActive','true');
+    setInterval(()=>{
+      points+=generatorRate*getUpgradeMultiplier()*multiplier;
+      updateUI();
+    },60000);
+  }
+  function canUpgradeGenerator(){
+    return Date.now()-lastUpgradeTime>upgradeCooldownMs;
+  }
+  function upgradeGenerator(){
+    if(!generatorActive){
+      alert('Achetez d’abord le générateur !');
+      return;
+    }
+    if(!canUpgradeGenerator()){
+      alert('Prochaine amélioration possible dans moins de 3 jours.');
+      return;
+    }
+    const mults=[1.5,2,3];
+    const mult=mults[Math.floor(Math.random()*mults.length)];
+    generatorRate*=mult;
+    lastUpgradeTime=Date.now();
+    localStorage.setItem('lastGeneratorUpgrade', new Date().toISOString());
+    alert(`Générateur amélioré! Production x${mult}`);
+    updateUI();
+  }
+
+  // Auto-clicker
+  function updateAutoclickerStatus(){
+    if(Date.now() < autoclickerEndTime){
+      autoclickerActive = true;
+    } else {
+      autoclickerActive = false;
+      localStorage.removeItem('autoclickerEndTime');
+      clearAutoclickerInterval();
+    }
+  }
+  function clearAutoclickerInterval(){
+    if(autoclickerInterval){
+      clearInterval(autoclickerInterval);
+      autoclickerInterval = null;
+    }
+  }
+  function setupAutoclickEvents(){
+    clickButton.addEventListener('mousedown', () => {
+      if(!autoclickerActive) return;
+      if(autoclickerInterval) return;
+      autoclickerInterval = setInterval(()=>{ handleButtonClick(); }, 100);
+    });
+    clickButton.addEventListener('mouseup', clearAutoclickerInterval);
+    clickButton.addEventListener('mouseleave', clearAutoclickerInterval);
+    clickButton.addEventListener('touchstart', e => {
+      if(!autoclickerActive) return;
+      if(autoclickerInterval) return;
+      autoclickerInterval = setInterval(()=>{ handleButtonClick(); }, 100);
+      e.preventDefault();
+    });
+    clickButton.addEventListener('touchend', clearAutoclickerInterval);
+    clickButton.addEventListener('touchcancel', clearAutoclickerInterval);
+  }
+
+  // Récompenses boutique
+  function addEmojiReward(){
+    resetRewards();
+    currentReward='emoji';
+    const emojiBtn=document.createElement('button');
+    emojiBtn.classList.add('chest-button','chest-green');
+    emojiBtn.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    emojiBtn.title='Bouton emoji';
+    emojiBtn.onclick=()=>{handleButtonClick();};
+    chestsContainer.appendChild(emojiBtn);
+    statusEl.textContent='Bouton emoji activé';
+  }
+  function addMusicReward(){
+    resetRewards();
+    currentReward='music';
+    const musicBtn=document.createElement('button');
+    musicBtn.classList.add('chest-button','chest-blue');
+    musicBtn.textContent='♪';
+    musicBtn.title='Bouton musique';
+    musicBtn.onclick=()=>{handleButtonClick();playRandomNote();};
+    chestsContainer.appendChild(musicBtn);
+    statusEl.textContent='Bouton musique activé';
+  }
+  function addSoundReward(){
+    resetRewards();
+    currentReward='sound';
+    const soundBtn=document.createElement('button');
+    soundBtn.classList.add('chest-button','chest-purple');
+    soundBtn.textContent='💥';
+    soundBtn.title='Bouton son';
+    soundBtn.onclick=()=>{handleButtonClick();playRandomSound();};
+    chestsContainer.appendChild(soundBtn);
+    statusEl.textContent='Bouton son activé';
+  }
+  function addMultiplierReward(){
+    if(points < chestGoldCost){
+      alert(`Pas assez de points pour acheter le Coffre Doré.`);
+      return;
+    }
+    points -= chestGoldCost;
+    resetRewards();
+    currentReward = 'multiplier';
+    multiplier = 3;
+    statusEl.textContent = 'Multiplicateur x3 activé !';
+    updateUI();
+    updateLeaderboard();
+  }
+  function updateChestGoldButton() {
+    const buttons = Array.from(shopContainer.getElementsByClassName('chest-gold'));
+    buttons.forEach(btn=>{
+      btn.textContent = `Coffre Doré (x3) (${chestGoldCost} pts)`;
+      btn.title = `Coût: ${chestGoldCost} points (peut être réduit par promo)`;
+    });
+  }
+
+  const musicFrequencies={do:261.63,re:293.66,mi:329.63};
+  function playRandomNote(){
+    const notes=['do','re','mi'];
+    const note=notes[Math.floor(Math.random()*notes.length)];
+    playTone(musicFrequencies[note], 500);
+  }
+
+  const soundEffects {
+    gun:'https://actions.google.com/sounds/v1/weapons/shotgun_blast.ogg',
+    cash:'https://actions.google.com/sounds/v1/cash_register/cash_register.ogg',
+    coin:'https://actions.google.com/sounds/v1/coins/coin_drop.ogg'
+  };
+
+  function playRandomSound(){
+    const sounds=[soundEffects.gun,soundEffects.cash];
+    const audio=new Audio(sounds[Math.floor(Math.random()*sounds.length)]);
+    audio.play();
+  }
+
+  function playTone(freq,duration){
+    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    const ctx=new AudioContext();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(freq,ctx.currentTime);
+    osc.type='sine';
+    osc.start();
+    gain.gain.setValueAtTime(0.1,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001,ctx.currentTime+duration/1000);
+    osc.stop(ctx.currentTime+duration/1000);
+  }
+
+  // Couleurs bouton clic
+  const buttonColors = {
+    violet: '#8e44ad',
+    rose: '#e91e63',
+    orange: '#ff9800',
+    vert: '#4caf50',
+    marron: '#795548',
+    ciel: '#87ceeb',
+    dore: '#f1c40f'
+  };
+
+  function applyButtonColor(colorHex) {
+    clickButton.style.backgroundColor = colorHex;
+  }
+
+  function buyColor(colorKey) {
+    if (!(colorKey in buttonColors)) return;
+    if(points < 5000){
+      alert('Pas assez de points pour acheter cette couleur.');
+      return;
+    }
+    if(currentReward && (currentReward === 'color' || currentReward === 'emoji' || currentReward === 'multiplier')){
+      alert('Une récompense incompatible est active, réinitialisez-la avant.');
+      return;
+    }
+    points -= 5000;
+    resetRewards();
+    currentReward = 'color';
+    multiplier = 1;
+    applyButtonColor(buttonColors[colorKey]);
+    if(colorKey === 'dore') {
+      clickButton.onclick = () => {
+        handleButtonClick();
+        const audio = new Audio(soundEffects.coin);
+        audio.volume=0.4;
+        audio.play();
+      };
+    } else {
+      clickButton.onclick = () => {
+        handleButtonClick();
+      };
+    }
+    updateUI();
+  }
+
+  function buyAllColorsPack() {
+    if(points < 27000){
+      alert('Pas assez de points pour acheter ce pack.');
+      return;
+    }
+    if(currentReward && (currentReward === 'color' || currentReward === 'emoji' || currentReward === 'multiplier')){
+      alert('Récompense incompatible active, réinitialisez avant.');
+      return;
+    }
+    points -= 27000;
+    resetRewards();
+    currentReward = 'color';
+    multiplier = 1;
+    clickButton.style.background = 'linear-gradient(45deg, violet, pink, orange, green, brown, deepskyblue)';
+    clickButton.onclick = () => handleButtonClick();
+    updateUI();
+  }
+
+  function addColorsShopButtons() {
+    shopContainer.appendChild(createShopButton('', 5000, 'Violet', () => buyColor('violet')));
+    shopContainer.appendChild(createShopButton('', 5000, 'Rose', () => buyColor('rose')));
+    shopContainer.appendChild(createShopButton('', 5000, 'Orange', () => buyColor('orange')));
+    shopContainer.appendChild(createShopButton('', 5000, 'Vert', () => buyColor('vert')));
+    shopContainer.appendChild(createShopButton('', 5000, 'Marron', () => buyColor('marron')));
+    shopContainer.appendChild(createShopButton('', 5000, 'Bleu ciel', () => buyColor('ciel')));
+    shopContainer.appendChild(createShopButton('', 5000, 'Doré', () => buyColor('dore')));
+    shopContainer.appendChild(createShopButton('', 27000, 'Pack toutes couleurs', buyAllColorsPack));
+  }
+
+  // Code promo
+  const promoInput = document.getElementById('promo-code-input');
+  const promoApplyBtn = document.getElementById('promo-apply-btn');
+  const promoMessage = document.getElementById('promo-message');
+
+  promoApplyBtn.addEventListener('click', () => {
+    const codeRaw = promoInput.value.trim();
+    const code = codeRaw.toUpperCase();
+    if(!code) {
+      promoMessage.style.color = 'red';
+      promoMessage.textContent = "Veuillez entrer un code.";
+      return;
+    }
+    if(promoUsedCodes[code]) {
+      promoMessage.style.color = 'red';
+      promoMessage.textContent = `Le code ${codeRaw} a déjà été utilisé.`;
+      return;
+    }
+    if(validPromoCodes[code]){
+      applyPromoCodeEffects(code);
+      promoMessage.style.color = 'green';
+      promoMessage.textContent = `Code ${codeRaw} appliqué avec succès !`;
+      promoInput.disabled = true;
+      promoApplyBtn.disabled = true;
+      promoUsedCodes[code] = true;
+      localStorage.setItem('promoUsedCodes', JSON.stringify(promoUsedCodes));
+    } else {
+      promoMessage.style.color = 'red';
+      promoMessage.textContent = "Code invalide.";
+    }
+  });
+
+  function applyPromoCodeEffects(code) {
+    const info = validPromoCodes[code];
+    if(info.type === 'points'){
+      points += info.amount;
+      updateUI();
+    } else if(info.type === 'autoclicker'){
+      activateAutoclickerDays(info.durationDays);
+    } else if(info.type === 'combo'){
+      points += 1000000;
+      activateAutoclickerDays(7);
+      chestGoldCost = baseChestGoldCost / 2;
+      updateChestGoldButton();
+      updateUI();
+    }
+  }
+
+  function activateAutoclickerDays(days){
+    autoclickerActive = true;
+    autoclickerEndTime = Date.now() + days*24*60*60*1000;
+    localStorage.setItem('autoclickerEndTime', new Date(autoclickerEndTime).toISOString());
+    alert(`Auto-Clicker activé pendant ${days} jour${days>1?'s':''}! Maintenez le bouton pour cliquer automatiquement.`);
+  }
+
+  // Initialisation complète
+  function init() {
+    chestsContainer.innerHTML = '';
+    chestsContainer.appendChild(createGrayChest());
+
+    shopContainer.innerHTML = '';
+    addColorsShopButtons();
+
+    shopContainer.appendChild(createShopButton('chest-green', 1000, 'Coffre Vert (Emoji)', addEmojiReward));
+    shopContainer.appendChild(createShopButton('chest-blue', 12000, 'Coffre Bleu (Musique)', addMusicReward));
+    shopContainer.appendChild(createShopButton('chest-purple', 50000, 'Coffre Violet (Son)', addSoundReward));
+    shopContainer.appendChild(createChestGoldButton());
+
+    const generatorInfo = document.createElement('div');
+    generatorInfo.style.margin = '10px 0';
+    generatorInfo.textContent = 'Achetez un générateur automatique à 5 € (5 points/minute)';
+    shopContainer.appendChild(generatorInfo);
+    paypal.Buttons({
+      style: { layout: 'horizontal', color: 'gold', shape: 'rect', label: 'paypal' },
+      createOrder: (data, actions) => actions.order.create({
+        purchase_units: [{ amount: { value: '5.00' } }]
+      }),
+      onApprove: (data, actions) => actions.order.capture().then(() => {
+        alert('Générateur acheté avec succès !');
+        startGenerator();
+      })
+    }).render(paypalButtonContainer);
+
+    const upgradeGenBtn = document.createElement('button');
+    upgradeGenBtn.classList.add('chest-button', 'chest-gold');
+    upgradeGenBtn.textContent = 'Améliorer Générateur (gratuit tous les 3 jours)';
+    upgradeGenBtn.style.fontSize = '1em';
+    upgradeGenBtn.style.marginTop = '10px';
+    upgradeGenBtn.onclick = upgradeGenerator;
+    shopContainer.appendChild(upgradeGenBtn);
+
+    const autoClickInfo = document.createElement('div');
+    autoClickInfo.textContent = 'Achetez un Auto-Clicker à 3 € (10 clics/sec pendant 1 semaine)';
+    autoClickInfo.style.margin = '15px 0 5px';
+    shopContainer.appendChild(autoClickInfo);
+    paypal.Buttons({
+      style: { layout: 'horizontal', color: 'gold', shape: 'rect', label: 'paypal' },
+      createOrder: (data, actions) => actions.order.create({
+        purchase_units: [{ amount: { value: '3.00' } }]
+      }),
+      onApprove: (data, actions) => actions.order.capture().then(() => {
+        autoclickerActive = true;
+        autoclickerEndTime = Date.now() + 7*24*60*60*1000;
+        localStorage.setItem('autoclickerEndTime', new Date(autoclickerEndTime).toISOString());
+        alert('Auto-Clicker activé pour 1 semaine ! Maintenez le bouton pour cliquer automatiquement.');
+      })
+    }).render(document.createElement('div'));
+
+    updateUI();
+    renderLeaderboard();
+    updateAutoclickerStatus();
+    setupAutoclickEvents();
+    if(localStorage.getItem('generatorActive') === 'true') startGenerator();
+
+    // Promo code elements
+    promoUsedCodes = JSON.parse(localStorage.getItem('promoUsedCodes')) || {};
+
+    const promoInput = document.getElementById('promo-code-input');
+    const promoApplyBtn = document.getElementById('promo-apply-btn');
+    const promoMessage = document.getElementById('promo-message');
+    promoApplyBtn.addEventListener('click', () => {
+      const codeRaw = promoInput.value.trim();
+      const code = codeRaw.toUpperCase();
+      if(!code) {
+        promoMessage.style.color = 'red';
+        promoMessage.textContent = "Veuillez entrer un code.";
+        return;
+      }
+      if(promoUsedCodes[code]) {
+        promoMessage.style.color = 'red';
+        promoMessage.textContent = `Le code ${codeRaw} a déjà été utilisé.`;
+        return;
+      }
+      if(validPromoCodes[code]){
+        applyPromoCodeEffects(code);
+        promoMessage.style.color = 'green';
+        promoMessage.textContent = `Code ${codeRaw} appliqué avec succès !`;
+        promoInput.disabled = true;
+        promoApplyBtn.disabled = true;
+        promoUsedCodes[code] = true;
+        localStorage.setItem('promoUsedCodes', JSON.stringify(promoUsedCodes));
+      } else {
+        promoMessage.style.color = 'red';
+        promoMessage.textContent = "Code invalide.";
+      }
+    });
+  }
+
+  function createChestGoldButton() {
+    return createShopButton('chest-gold', chestGoldCost, 'Coffre Doré (x3)', addMultiplierReward);
+  }
+
+  // Leaderboard
+  function updateLeaderboard(){
+    if(points<=0) return;
+    let leaderboard=JSON.parse(localStorage.getItem('leaderboard')) || [];
+    leaderboard.push(points);
+    leaderboard.sort((a,b)=>b-a);
+    if(leaderboard.length>5) leaderboard=leaderboard.slice(0,5);
+    localStorage.setItem('leaderboard',JSON.stringify(leaderboard));
+    renderLeaderboard();
+  }
+  function renderLeaderboard(){
+    const leaderboard=JSON.parse(localStorage.getItem('leaderboard')) || [];
+    leaderboardList.innerHTML='';
+    if(!leaderboard.length){
+      leaderboardList.innerHTML='<li>Aucun score enregistré</li>';
+      return;
+    }
+    leaderboard.forEach((score,i)=>{
+      const li=document.createElement('li');
+      li.textContent=`${i+1}. ${Math.floor(score)} points`;
+      leaderboardList.appendChild(li);
+    });
+  }
+
+  resetLeaderboardBtn.addEventListener('click',()=>{
+    localStorage.removeItem('leaderboard');
+    renderLeaderboard();
+  });
+
+  upgradeButton.addEventListener('click',()=>{
+    const cost=calculateUpgradeCost(upgradeLevel);
+    if(points>=cost){
+      points-=cost;
+      upgradeLevel++;
+      upgradeCost=calculateUpgradeCost(upgradeLevel);
+      updateUI();
+    } else {
+      alert(`Il faut ${cost} points pour acheter cette amélioration.`);
+    }
+  });
+
+  // Sound play utils
+  function playRandomNote() {
+    const notes = ['do','re','mi'];
+    const note = notes[Math.floor(Math.random() * notes.length)];
+    playTone(musicFrequencies[note], 500);
+  }
+  function playRandomSound() {
+    const sounds = [soundEffects.gun, soundEffects.cash];
+    const audio = new Audio(sounds[Math.floor(Math.random() * sounds.length)]);
+    audio.play();
+  }
+  const musicFrequencies = {do:261.63,re:293.66,mi:329.63};
+  const soundEffects = {
+    gun:'https://actions.google.com/sounds/v1/weapons/shotgun_blast.ogg',
+    cash:'https://actions.google.com/sounds/v1/cash_register/cash_register.ogg',
+    coin:'https://actions.google.com/sounds/v1/coins/coin_drop.ogg'
+  };
+  function playTone(freq,duration) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(freq,ctx.currentTime);
+    osc.type = 'sine';
+    osc.start();
+    gain.gain.setValueAtTime(0.1,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001,ctx.currentTime + duration/1000);
+    osc.stop(ctx.currentTime + duration/1000);
+  }
+
+  updateUI();
+  renderLeaderboard();
+  updateAutoclickerStatus();
+  setupAutoclickEvents();
+
+  window.onload = () => {
+    init();
+  };
+</script>
+
+</body>
+</html>
